@@ -74,13 +74,15 @@ input[type="text"] {
             <div class="results" id="results" style="display:none">
                 <div class="result-row"><span class="result-label">Advisory Rate (Before discount):</span><span class="result-value" id="advisoryRateBefore"></span></div>
                 <div class="result-row"><span class="result-label">Advisory Amount (Before discount):</span><span class="result-value" id="advisoryAmountBefore"></span></div>
-                <div class="result-row"><span class="result-label">Total Repayment (Before discount & VAT):</span><span class="result-value" id="totalRepaymentBefore"></span></div>
+                <div class="result-row"><span class="result-label">VAT (Before discount):</span><span class="result-value" id="vatBefore"></span></div>
+                <div class="result-row"><span class="result-label">Total Repayment (Before discount):</span><span class="result-value" id="totalRepaymentBefore"></span></div>
                 <div class="result-row"><span class="result-label">Collections Target (60% of Outstanding):</span><span class="result-value" id="collectionsTarget"></span></div>
                 <div class="result-row"><span class="result-label">Advisory Rate (After discount):</span><span class="result-value" id="advisoryRateAfter"></span></div>
                 <div class="result-row"><span class="result-label">Advisory Amount (After discount):</span><span class="result-value" id="advisoryAmountAfter"></span></div>
-                <div class="result-row"><span class="result-label">Total Repayment (After discount, before VAT):</span><span class="result-value" id="totalRepaymentAfter"></span></div>
+                <div class="result-row"><span class="result-label">VAT (After discount):</span><span class="result-value" id="vatAfter"></span></div>
+                <div class="result-row"><span class="result-label">Total Repayment (After discount):</span><span class="result-value" id="totalRepaymentAfter"></span></div>
                 <div class="result-row"><span class="result-label">Commission:</span><span class="result-value" id="commission"></span></div>
-                <div class="result-row"><span class="result-label">Total Repayment (After discount, commission, before VAT):</span><span class="result-value" id="totalRepaymentFinal"></span></div>
+                <div class="result-row"><span class="result-label">Total Repayment (After discount & commission):</span><span class="result-value" id="totalRepaymentFinal"></span></div>
                 <div class="result-row"><span class="result-label">Net GM1%:</span><span class="result-value" id="netGM1"></span></div>
             </div>
         </div>
@@ -128,8 +130,10 @@ input[type="text"] {
             else advisoryRateBefore = 0.07;
             // Advisory Amount (Before discount)
             const advisoryAmountBefore = financingAmount * advisoryRateBefore;
-            // Total Repayment (Before discount and VAT)
-            const totalRepaymentBefore = financingAmount + advisoryAmountBefore;
+            // VAT (Before discount)
+            const vatBefore = advisoryAmountBefore * 0.11;
+            // Total Repayment (Before discount)
+            const totalRepaymentBefore = financingAmount + advisoryAmountBefore + vatBefore;
             // Collections Target (60% of Outstanding)
             const collectionsTarget = farmerOutstanding * 0.6;
             // Advisory Rate (After discount)
@@ -139,21 +143,25 @@ input[type="text"] {
             else if (actualCollection > 0.9 * collectionsTarget) advisoryRateAfter = advisoryRateBefore - 0.01;
             // Advisory Amount (After discount)
             const advisoryAmountAfter = financingAmount * advisoryRateAfter;
-            // Total Repayment (After discount, before VAT)
-            const totalRepaymentAfter = financingAmount + advisoryAmountAfter;
+            // VAT (After discount)
+            const vatAfter = advisoryAmountAfter * 0.11;
+            // Total Repayment (After discount)
+            const totalRepaymentAfter = financingAmount + advisoryAmountAfter + vatAfter;
             // Commission
             const commission = actualCollection * 0.03;
-            // Total Repayment (After discount, commission, before VAT)
+            // Total Repayment (After discount & commission)
             const totalRepaymentFinal = totalRepaymentAfter - commission;
-            // Net GM1%
-            const netGM1 = (totalRepaymentFinal - financingAmount) / financingAmount;
+            // Net GM1%: (Total Repayment After discount & commission - VAT After discount - Financing Amount) / Financing Amount
+            const netGM1 = (totalRepaymentFinal - vatAfter - financingAmount) / financingAmount;
             // Display results
             document.getElementById('advisoryRateBefore').textContent = formatPercent(advisoryRateBefore);
             document.getElementById('advisoryAmountBefore').textContent = formatCurrency(advisoryAmountBefore);
+            document.getElementById('vatBefore').textContent = formatCurrency(vatBefore);
             document.getElementById('totalRepaymentBefore').textContent = formatCurrency(totalRepaymentBefore);
             document.getElementById('collectionsTarget').textContent = formatCurrency(collectionsTarget);
             document.getElementById('advisoryRateAfter').textContent = formatPercent(advisoryRateAfter);
             document.getElementById('advisoryAmountAfter').textContent = formatCurrency(advisoryAmountAfter);
+            document.getElementById('vatAfter').textContent = formatCurrency(vatAfter);
             document.getElementById('totalRepaymentAfter').textContent = formatCurrency(totalRepaymentAfter);
             document.getElementById('commission').textContent = formatCurrency(commission);
             document.getElementById('totalRepaymentFinal').textContent = formatCurrency(totalRepaymentFinal);
