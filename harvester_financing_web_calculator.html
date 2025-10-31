@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvester Financing Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f8fb; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 32px; }
+        h1 { text-align: center; color: #2a4d69; }
+        label { display: block; margin-top: 24px; font-weight: bold; font-size: 1.1rem; }
+input[type="text"] {
+    width: 100%;
+    padding: 15px;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: 2px solid #e0e0e0;
+    font-size: 18px;
+    background: #fff;
+}
+        input[type="number"] { width: 100%; padding: 8px; margin-top: 4px; border-radius: 4px; border: 1px solid #ccc; }
+        .results { margin-top: 32px; background: #eaf6ff; border-radius: 6px; padding: 18px; }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            gap: 24px;
+            white-space: nowrap;
+        }
+        .result-label {
+            color: #2a4d69;
+                            font-size: 0.68rem;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60%;
+        }
+        .result-value {
+            font-weight: bold;
+                            font-size: 0.68rem;
+            color: #222;
+            white-space: nowrap;
+        }
+        button { margin-top: 32px; padding: 14px 32px; background: #2a4d69; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1rem; }
+        button:hover { background: #1e3550; }
+    </style>
+</head>
+<body>
+        <div class="container">
+            <h1>Harvester Financing Calculator</h1>
+            <form id="calcForm">
+                <label>Harvester Financing Amount
+                                    <div style="display: flex; align-items: center;">
+                                          <span style="margin-right:8px; font-weight: bold;">Rp</span>
+                                          <input type="text" id="financingAmount" required inputmode="numeric" pattern="[0-9,]*" style="flex:1; background: #FFF9E3;">
+                                    </div>
+                </label>
+                <label>Farmer's Outstanding
+                                    <div style="display: flex; align-items: center;">
+                                          <span style="margin-right:8px; font-weight: bold;">Rp</span>
+                                          <input type="text" id="farmerOutstanding" required inputmode="numeric" pattern="[0-9,]*" style="flex:1; background: #FFF9E3;">
+                                    </div>
+                </label>
+                <label>Actual Collection
+                                    <div style="display: flex; align-items: center;">
+                                          <span style="margin-right:8px; font-weight: bold;">Rp</span>
+                                          <input type="text" id="actualCollection" required inputmode="numeric" pattern="[0-9,]*" style="flex:1; background: #FFF9E3;">
+                                    </div>
+                </label>
+                <button type="submit">Calculate</button>
+            </form>
+            <div class="results" id="results" style="display:none">
+                <div class="result-row"><span class="result-label">Advisory Rate (Before discount):</span><span class="result-value" id="advisoryRateBefore"></span></div>
+                <div class="result-row"><span class="result-label">Advisory Amount (Before discount):</span><span class="result-value" id="advisoryAmountBefore"></span></div>
+                <div class="result-row"><span class="result-label">Total Repayment (Before discount & VAT):</span><span class="result-value" id="totalRepaymentBefore"></span></div>
+                <div class="result-row"><span class="result-label">Collections Target (60% of Outstanding):</span><span class="result-value" id="collectionsTarget"></span></div>
+                <div class="result-row"><span class="result-label">Advisory Rate (After discount):</span><span class="result-value" id="advisoryRateAfter"></span></div>
+                <div class="result-row"><span class="result-label">Advisory Amount (After discount):</span><span class="result-value" id="advisoryAmountAfter"></span></div>
+                <div class="result-row"><span class="result-label">Total Repayment (After discount, before VAT):</span><span class="result-value" id="totalRepaymentAfter"></span></div>
+                <div class="result-row"><span class="result-label">Commission:</span><span class="result-value" id="commission"></span></div>
+                <div class="result-row"><span class="result-label">Total Repayment (After discount, commission, before VAT):</span><span class="result-value" id="totalRepaymentFinal"></span></div>
+                <div class="result-row"><span class="result-label">Net GM1%:</span><span class="result-value" id="netGM1"></span></div>
+            </div>
+        </div>
+    <script>
+        function formatCurrency(num) {
+            return num ? 'Rp ' + num.toLocaleString('id-ID', {maximumFractionDigits: 0}) : '-';
+        }
+        function formatPercent(num) {
+            return num !== null && num !== undefined ? (num * 100).toFixed(2) + '%' : '-';
+        }
+
+        function parseNumberWithCommas(str) {
+            return Number(str.replace(/,/g, ''));
+        }
+
+        function addCommaSeparator(input) {
+            let value = input.value.replace(/[^\d]/g, '');
+            if (value) {
+                input.value = Number(value).toLocaleString('en-US');
+            } else {
+                input.value = '';
+            }
+        }
+
+        document.getElementById('financingAmount').addEventListener('input', function(e) {
+            addCommaSeparator(e.target);
+        });
+        document.getElementById('farmerOutstanding').addEventListener('input', function(e) {
+            addCommaSeparator(e.target);
+        });
+        document.getElementById('actualCollection').addEventListener('input', function(e) {
+            addCommaSeparator(e.target);
+        });
+
+        document.getElementById('calcForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Inputs
+            const financingAmount = parseNumberWithCommas(document.getElementById('financingAmount').value);
+            const farmerOutstanding = parseNumberWithCommas(document.getElementById('farmerOutstanding').value);
+            const actualCollection = parseNumberWithCommas(document.getElementById('actualCollection').value);
+            // Advisory Rate (Before discount)
+            let advisoryRateBefore = null;
+            if (financingAmount <= 150000000) advisoryRateBefore = 0.10;
+            else if (financingAmount <= 200000000) advisoryRateBefore = 0.085;
+            else advisoryRateBefore = 0.07;
+            // Advisory Amount (Before discount)
+            const advisoryAmountBefore = financingAmount * advisoryRateBefore;
+            // Total Repayment (Before discount and VAT)
+            const totalRepaymentBefore = financingAmount + advisoryAmountBefore;
+            // Collections Target (60% of Outstanding)
+            const collectionsTarget = farmerOutstanding * 0.6;
+            // Advisory Rate (After discount)
+            let advisoryRateAfter = advisoryRateBefore;
+            if (actualCollection === 0.35 * collectionsTarget) advisoryRateAfter = advisoryRateBefore - 0.005;
+            else if (actualCollection === 0.5 * collectionsTarget) advisoryRateAfter = advisoryRateBefore - 0.0075;
+            else if (actualCollection > 0.9 * collectionsTarget) advisoryRateAfter = advisoryRateBefore - 0.01;
+            // Advisory Amount (After discount)
+            const advisoryAmountAfter = financingAmount * advisoryRateAfter;
+            // Total Repayment (After discount, before VAT)
+            const totalRepaymentAfter = financingAmount + advisoryAmountAfter;
+            // Commission
+            const commission = actualCollection * 0.03;
+            // Total Repayment (After discount, commission, before VAT)
+            const totalRepaymentFinal = totalRepaymentAfter - commission;
+            // Net GM1%
+            const netGM1 = (totalRepaymentFinal - financingAmount) / financingAmount;
+            // Display results
+            document.getElementById('advisoryRateBefore').textContent = formatPercent(advisoryRateBefore);
+            document.getElementById('advisoryAmountBefore').textContent = formatCurrency(advisoryAmountBefore);
+            document.getElementById('totalRepaymentBefore').textContent = formatCurrency(totalRepaymentBefore);
+            document.getElementById('collectionsTarget').textContent = formatCurrency(collectionsTarget);
+            document.getElementById('advisoryRateAfter').textContent = formatPercent(advisoryRateAfter);
+            document.getElementById('advisoryAmountAfter').textContent = formatCurrency(advisoryAmountAfter);
+            document.getElementById('totalRepaymentAfter').textContent = formatCurrency(totalRepaymentAfter);
+            document.getElementById('commission').textContent = formatCurrency(commission);
+            document.getElementById('totalRepaymentFinal').textContent = formatCurrency(totalRepaymentFinal);
+            document.getElementById('netGM1').textContent = formatPercent(netGM1);
+            document.getElementById('results').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harvester Financing Calculator - Rize Indonesia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        function formatRupiah(number) {
+            return 'Rp ' + (number !== "" ? number.toLocaleString('id-ID') : "");
+        }
+        function formatPercentage(number) {
+            return number !== "" ? number.toFixed(1) + '%' : "";
+        }
+        function calculateAll() {
+            const C2 = parseFloat(document.getElementById('harvestFinancing').value) || 0;
+            const C6 = parseFloat(document.getElementById('farmerOutstanding').value) || 0;
+            const C8 = parseFloat(document.getElementById('actualCollection').value) || 0;
+
+            // C3: Advisory Rate (Before discount)
+            let C3 = "";
+            if (C2 === 0) {
+                C3 = "";
+            } else if (C2 <= 150000000) {
+                C3 = 0.10;
+            } else if (C2 <= 200000000) {
+                C3 = 0.085;
+            } else {
+                C3 = 0.07;
+            }
+
+            // C4: Advisory Amount (Before discount)
+            let C4 = (C2 === 0 || C3 === "") ? "" : C3 * C2;
+
+            // C5: Total Repayment (Before discount and VAT)
+            let C5 = (C2 === 0 || C4 === "") ? "" : C2 + C4;
+
+            // C7: Collections Target (60% of farmer's outstanding)
+            let C7 = (C6 === 0) ? "" : C6 * 0.6;
+
+            // C9: Advisory Rate (After discount)
+            let C9 = "";
+            if (C8 === 0 || C7 === "" || C3 === "") {
+                C9 = "";
+            } else if (C8 === 0.35 * C7) {
+                C9 = C3 - 0.005;
+            } else if (C8 === 0.5 * C7) {
+                C9 = C3 - 0.0075;
+            } else if (C8 > 0.9 * C7) {
+                C9 = C3 - 0.01;
+            } else {
+                C9 = C3;
+            }
+
+            // C10: Advisory Amount (After discount)
+            let C10 = (C8 === 0 || C9 === "" || C2 === 0) ? "" : C9 * C2;
+
+            // C11: Total Repayment (After discount and before VAT)
+            let C11 = (C2 === 0 || C10 === "") ? "" : C2 + C10;
+
+            // C12: Commission
+            let C12 = (C8 === 0) ? "" : C8 * 0.03;
+
+            // C13: Total Repayment (After discount, commission and before VAT)
+            let C13 = (C2 === 0 || C11 === "" || C12 === "") ? "" : C11 - C12;
+
+            // C14: Net GM1%
+            let C14 = (C2 === 0 || C13 === "") ? "" : ((C13 - C2) / C2) * 100;
+
+            // Update display
+            document.getElementById('advisoryRateBefore').textContent = (C3 === "") ? "" : formatPercentage(C3 * 100);
+            document.getElementById('advisoryBefore').textContent = (C4 === "") ? "" : formatRupiah(C4);
+            document.getElementById('totalBefore').textContent = (C5 === "") ? "" : formatRupiah(C5);
+            document.getElementById('collectionTarget').textContent = (C7 === "") ? "" : formatRupiah(C7);
+            document.getElementById('advisoryRateAfter').textContent = (C9 === "") ? "" : formatPercentage(C9 * 100);
+            document.getElementById('advisoryAfter').textContent = (C10 === "") ? "" : formatRupiah(C10);
+            document.getElementById('totalAfter').textContent = (C11 === "") ? "" : formatRupiah(C11);
+            document.getElementById('commission').textContent = (C12 === "") ? "" : formatRupiah(C12);
+            document.getElementById('totalFinal').textContent = (C13 === "") ? "" : formatRupiah(C13);
+            document.getElementById('netGM').textContent = (C14 === "") ? "" : formatPercentage(C14);
+        }
+        window.onload = function() { calculateAll(); };
+            transform: translateY(-50%);
+            color: #666;
+            font-weight: 500;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: #fef9e7;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .result-card {
+            background: #f8f9ff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-card.highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .result-card.highlight .result-label {
+            color: white;
+            opacity: 0.95;
+        }
+
+        .result-value {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .result-card.highlight .result-value {
+            color: white;
+            font-size: 20px;
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .calculate-btn:active {
+            transform: translateY(0);
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+            margin: 30px 0;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-input {
+            background: #fef9e7;
+            color: #f39c12;
+            border: 1px solid #f39c12;
+        }
+
+        .badge-formula {
+            background: #ebf5fb;
+            color: #3498db;
+            border: 1px solid #3498db;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+        }
+
+        /* Number formatting */
+        .formatted-number {
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+
+
+    <script>
+        // Format number to Indonesian Rupiah format
+        function formatRupiah(number) {
+            return 'Rp ' + number.toLocaleString('id-ID');
+        }
+
+        // Format percentage
+        function formatPercentage(number) {
+            return number.toFixed(1) + '%';
+        }
+
+        // Main calculation function
+        function calculateAll() {
+            // Get input values
+            const harvestFinancing = parseFloat(document.getElementById('harvestFinancing').value) || 0;
+            const farmerOutstanding = parseFloat(document.getElementById('farmerOutstanding').value) || 0;
+            const actualCollection = parseFloat(document.getElementById('actualCollection').value) || 0;
+
+            // Constants
+            const advisoryRateBefore = 0.07; // 7%
+            const advisoryRateAfter = 0.06;  // 6%
+            const collectionTargetRate = 0.60; // 60%
+            const commissionRate = 0.03; // 3%
+
+            // Calculations - Before Discount
+            const advisoryBefore = harvestFinancing * advisoryRateBefore;
+            const totalBefore = harvestFinancing + advisoryBefore;
+
+            // Collection Target
+            const collectionTarget = farmerOutstanding * collectionTargetRate;
+
+            // Calculations - After Discount
+            const advisoryAfter = harvestFinancing * advisoryRateAfter;
+            const totalAfter = harvestFinancing + advisoryAfter;
+
+            // Final Calculations
+            const commission = actualCollection * commissionRate;
+            const totalFinal = totalAfter - commission;
+
+            // Net GM1% = (Total Final - Harvest Financing) / Harvest Financing
+            const netGM = ((totalFinal - harvestFinancing) / harvestFinancing) * 100;
+
+            // Update the display
+            document.getElementById('advisoryBefore').textContent = formatRupiah(advisoryBefore);
+            document.getElementById('totalBefore').textContent = formatRupiah(totalBefore);
+            document.getElementById('collectionTarget').textContent = formatRupiah(collectionTarget);
+            document.getElementById('advisoryAfter').textContent = formatRupiah(advisoryAfter);
+            document.getElementById('totalAfter').textContent = formatRupiah(totalAfter);
+            document.getElementById('commission').textContent = formatRupiah(commission);
+            document.getElementById('totalFinal').textContent = formatRupiah(totalFinal);
+            document.getElementById('netGM').textContent = formatPercentage(netGM);
+        }
+
+        // Calculate on page load
+        window.onload = function() {
+            calculateAll();
+        };
+    </script>
+</body>
+</html>
